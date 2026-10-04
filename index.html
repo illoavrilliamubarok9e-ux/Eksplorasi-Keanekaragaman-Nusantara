@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eksplorasi Keanekaragaman Nusantara & Kuis PJKR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Impor Pustaka MediaPipe Hands & Pose -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+    <style>
+        #virtual_cursor { transition: transform 0.05s linear; }
+        #draggable-cam {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        #draggable-cam:active { cursor: grabbing; }
+        .gesture-hover {
+            transform: scale(1.03);
+            border-color: #10b981 !important;
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.4) !important;
+        }
+        .embed-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 1rem;
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-emerald-50 via-white to-amber-50 text-slate-800 min-h-screen font-sans selection:bg-emerald-200 overflow-x-hidden">
+
+    <!-- Kursor Virtual -->
+    <div id="virtual_cursor" class="fixed w-8 h-8 bg-emerald-500/85 rounded-full pointer-events-none z-[100] transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(16,185,129,0.8)] border-2 border-white hidden flex items-center justify-center text-[10px] text-white font-bold"></div>
+
+    <!-- ========================================== -->
+    <!-- HALAMAN 1: LANDING PAGE                    -->
+    <!-- ========================================== -->
+    <div id="page-home" class="min-h-screen flex items-center justify-center p-4 sm:p-8 relative z-10">
+        <div class="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            <div class="space-y-6 lg:pr-8">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm font-bold tracking-wide">
+                    <span class="relative flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    INOVASI PEMBELAJARAN INTERAKTIF
+                </div>
+                <h1 class="text-5xl lg:text-7xl font-extrabold text-slate-900 leading-tight tracking-tight">
+                    Eksplorasi <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-amber-500">
+                        Keanekaragaman Nusantara
+                    </span>
+                </h1>
+                <p class="text-lg text-slate-600 leading-relaxed max-w-lg">
+                    Jelajahi kekayaan Flora, Fauna Endemik, dan Kuis Sensori Tubuh (PJKR) tanpa menyentuh layar!
+                </p>
+                <button id="btn-mulai" onclick="bukaMenuUtama()" class="interactive-btn mt-4 px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-lg transition-all transform hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-200 flex items-center gap-3 w-max cursor-pointer border-4 border-transparent">
+                    <span>Mulai Eksplorasi</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </div>
+            <div class="bg-white/75 backdrop-blur-2xl border border-white/80 shadow-2xl rounded-[2rem] p-6 sm:p-8 flex flex-col gap-6 relative shadow-emerald-900/5 pb-20">
+                <h3 class="text-xs font-bold text-slate-400 tracking-widest uppercase">✨ Fitur Utama & Navigasi</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white/90 p-3 rounded-2xl border border-slate-100 shadow-sm text-center">
+                        <div class="text-2xl mb-1">🌿🐅</div>
+                        <div class="text-xs font-bold text-slate-700">Slide Flora & Fauna</div>
+                    </div>
+                    <div class="bg-white/90 p-3 rounded-2xl border border-slate-100 shadow-sm text-center">
+                        <div class="text-2xl mb-1">🤸‍♂️</div>
+                        <div class="text-xs font-bold text-slate-700">Sensor Pose (Kuis)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- HALAMAN 2: MENU UTAMA                      -->
+    <!-- ========================================== -->
+    <div id="page-menu" class="min-h-screen hidden flex-col p-4 sm:p-8 relative z-10 max-w-7xl mx-auto justify-between">
+        <header class="flex items-center justify-between bg-white/70 backdrop-blur-xl p-4 sm:px-8 rounded-3xl border border-white/80 shadow-lg">
+            <button onclick="kembaliKeHome()" class="interactive-btn px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm cursor-pointer flex items-center gap-2 border-2 border-transparent">
+                <span>🏠</span> Beranda
+            </button>
+            <div class="text-center">
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800">Pilih Menu Pembelajaran</h2>
+                <p class="text-xs text-slate-500">Gunakan gerakan telunjuk & cubit (pinch) untuk memilih</p>
+            </div>
+            <div class="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold">
+                Mode: MediaPipe Hands 🟢
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-4 gap-6 my-auto py-8">
+            <div id="card-flora" class="interactive-btn bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-xl rounded-3xl p-6 flex flex-col items-center text-center cursor-pointer transition-all hover:scale-105 hover:shadow-2xl border-2 border-white" onclick="bukaFlora()">
+                <div class="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-4xl mb-4">🌿</div>
+                <h3 class="text-xl font-bold mb-1">Flora Nusantara</h3>
+                <p class="text-xs text-white/80 mb-4">Slide interaktif tumbuhan endemik per wilayah!</p>
+                <span class="mt-auto px-5 py-2 bg-white text-emerald-900 rounded-xl text-xs font-bold shadow-md">Mulai Belajar ➔</span>
+            </div>
+
+            <div id="card-fauna" class="interactive-btn bg-gradient-to-br from-amber-600 to-orange-700 text-white shadow-xl rounded-3xl p-6 flex flex-col items-center text-center cursor-pointer transition-all hover:scale-105 hover:shadow-2xl border-2 border-white" onclick="bukaFauna()">
+                <div class="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-4xl mb-4">🐅</div>
+                <h3 class="text-xl font-bold mb-1">Fauna Nusantara</h3>
+                <p class="text-xs text-white/80 mb-4">Slide interaktif hewan endemik pelindung alam!</p>
+                <span class="mt-auto px-5 py-2 bg-white text-amber-900 rounded-xl text-xs font-bold shadow-md">Mulai Belajar ➔</span>
+            </div>
+
+            <div class="interactive-btn bg-white/60 backdrop-blur-xl border-2 border-white shadow-xl rounded-3xl p-6 flex flex-col items-center text-center opacity-70">
+                <div class="w-20 h-20 bg-rose-100 rounded-2xl flex items-center justify-center text-4xl mb-4">💃</div>
+                <h3 class="text-xl font-bold text-slate-800 mb-1">Tarian Adat</h3>
+                <span class="mt-auto px-4 py-2 bg-slate-200 text-slate-500 rounded-xl text-xs font-bold">Menunggu Mitra</span>
+            </div>
+
+            <div id="card-kuis" class="interactive-btn bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl rounded-3xl p-6 flex flex-col items-center text-center cursor-pointer transition-all hover:scale-105 hover:shadow-2xl border-2 border-white" onclick="bukaKuis()">
+                <div class="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-4xl mb-4">🐒</div>
+                <h3 class="text-xl font-bold mb-1">Kuis Tiru Gaya Hewan</h3>
+                <p class="text-xs text-white/80 mb-4">Uji postur tubuh & biomekanika PJKR!</p>
+                <span class="mt-auto px-5 py-2 bg-white text-indigo-900 rounded-xl text-xs font-bold shadow-md">Mulai Kuis 🚀</span>
+            </div>
+        </main>
+        <footer class="text-center text-xs text-slate-400 py-4">Media Pembelajaran Interaktif &copy; 2026</footer>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- HALAMAN SLIDE INTERAKTIF FLORA             -->
+    <!-- ========================================== -->
+    <div id="page-flora" class="min-h-screen hidden flex-col p-4 sm:p-8 relative z-10 max-w-5xl mx-auto justify-between">
+        <header class="flex items-center justify-between bg-white/70 backdrop-blur-xl p-4 sm:px-6 rounded-3xl border border-white/80 shadow-lg">
+            <button class="interactive-btn px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm cursor-pointer flex items-center gap-2 border-2 border-transparent" onclick="tutupFlora()">
+                <span>⬅️</span> Kembali ke Menu
+            </button>
+            <div class="text-center">
+                <h2 id="flora-wilayah" class="text-lg sm:text-xl font-extrabold text-emerald-800">Wilayah: Sumatra</h2>
+                <p id="flora-counter" class="text-xs text-slate-500">Slide 1 dari 14</p>
+            </div>
+            <div class="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold">Slide Flora 🌿</div>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8 my-auto py-6 items-center bg-white/80 backdrop-blur-2xl border border-white shadow-2xl rounded-[2.5rem] p-6 sm:p-10">
+            <div class="flex flex-col items-center justify-center bg-slate-900 rounded-2xl p-4 relative min-h-[300px] overflow-hidden group">
+                <div id="container-3d-flora" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center"></div>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <span id="flora-tag" class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">Endemik Sumatra</span>
+                    <h3 id="flora-nama" class="text-3xl font-extrabold text-slate-900 mt-2">Padma Raksasa</h3>
+                </div>
+                <div class="space-y-2 text-sm text-slate-600">
+                    <p><strong>📖 Apa Itu?</strong> <span id="flora-apaitu">-</span></p>
+                    <p><strong>✨ Karakteristik:</strong> <span id="flora-karakteristik">-</span></p>
+                    <p><strong>🌱 Cara Berkembang:</strong> <span id="flora-perkembang">-</span></p>
+                    <p><strong>💡 Keunikan & Manfaat:</strong> <span id="flora-keunikan">-</span></p>
+                </div>
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <button class="interactive-btn px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs cursor-pointer border-2 border-transparent" onclick="slideSebelumnyaFlora()">◀ Sebelumnya</button>
+                    <button class="interactive-btn px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer border-2 border-transparent shadow-md" onclick="slideBerikutnyaFlora()">Selanjutnya ▶</button>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center text-xs text-slate-400 py-2">Dataset Resmi Mitra Proyek Manov 2026</footer>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- HALAMAN SLIDE INTERAKTIF FAUNA             -->
+    <!-- ========================================== -->
+    <div id="page-fauna" class="min-h-screen hidden flex-col p-4 sm:p-8 relative z-10 max-w-5xl mx-auto justify-between">
+        <header class="flex items-center justify-between bg-white/70 backdrop-blur-xl p-4 sm:px-6 rounded-3xl border border-white/80 shadow-lg">
+            <button class="interactive-btn px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm cursor-pointer flex items-center gap-2 border-2 border-transparent" onclick="tutupFauna()">
+                <span>⬅️</span> Kembali ke Menu
+            </button>
+            <div class="text-center">
+                <h2 id="fauna-wilayah" class="text-lg sm:text-xl font-extrabold text-amber-800">Wilayah: Sumatra</h2>
+                <p id="fauna-counter" class="text-xs text-slate-500">Slide 1 dari 15</p>
+            </div>
+            <div class="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-xs font-bold">Slide Fauna 🐅</div>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8 my-auto py-6 items-center bg-white/80 backdrop-blur-2xl border border-white shadow-2xl rounded-[2.5rem] p-6 sm:p-10">
+            <div class="flex flex-col items-center justify-center bg-slate-900 rounded-2xl p-4 relative min-h-[300px] overflow-hidden group">
+                <div id="container-3d-fauna" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center"></div>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <span id="fauna-tag" class="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">Endemik Sumatra</span>
+                    <h3 id="fauna-nama" class="text-3xl font-extrabold text-slate-900 mt-2">Harimau Sumatra</h3>
+                </div>
+                <div class="space-y-2 text-sm text-slate-600">
+                    <p><strong>📖 Apa Itu?</strong> <span id="fauna-apaitu">-</span></p>
+                    <p><strong>✨ Karakteristik:</strong> <span id="fauna-karakteristik">-</span></p>
+                    <p><strong>🐾 Cara Berkembang:</strong> <span id="fauna-perkembang">-</span></p>
+                    <p><strong>💡 Keunikan & Manfaat:</strong> <span id="fauna-keunikan">-</span></p>
+                </div>
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <button class="interactive-btn px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs cursor-pointer border-2 border-transparent" onclick="slideSebelumnyaFauna()">◀ Sebelumnya</button>
+                    <button class="interactive-btn px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs cursor-pointer border-2 border-transparent shadow-md" onclick="slideBerikutnyaFauna()">Selanjutnya ▶</button>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center text-xs text-slate-400 py-2">Dataset Resmi Mitra Proyek Manov 2026</footer>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- HALAMAN 3: KUIS GERAK (MEDIA PIPE POSE)    -->
+    <!-- ========================================== -->
+    <div id="page-kuis" class="min-h-screen hidden flex-col p-4 sm:p-8 relative z-10 max-w-4xl mx-auto justify-center">
+        <div class="bg-white/90 backdrop-blur-2xl border border-white shadow-2xl rounded-[2.5rem] p-6 sm:p-10 flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">Mode: MediaPipe Pose (Full Body)</span>
+                    <h2 class="text-2xl font-extrabold text-slate-800 mt-1">Tantangan Biomekanika Hewan PJKR</h2>
+                </div>
+                <button class="interactive-btn px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm cursor-pointer border-2 border-transparent" onclick="tutupKuis()">
+                    ✕ Keluar Kuis
+                </button>
+            </div>
+
+            <div class="flex flex-col items-center text-center py-2 space-y-3">
+                <div id="hewan-emoji" class="text-6xl animate-bounce">🦩</div>
+                <h3 id="hewan-nama" class="text-2xl font-extrabold text-slate-900">Burung Flamingo</h3>
+                <p id="hewan-instruksi" class="text-sm text-slate-600 max-w-md">
+                    Berdirilah dan angkat kedua tangan ke atas sejajar bahu untuk menirukan sayap flamingo!
+                </p>
+                <div id="sensor-status-badge" class="px-5 py-2.5 bg-blue-100 text-blue-800 rounded-2xl font-bold text-xs flex items-center gap-2 animate-pulse">
+                    <span>📡 Menunggu Postur Tubuh Sesuai di Depan Kamera...</span>
+                </div>
+            </div>
+
+            <div id="edukasi-box" class="hidden bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-5 text-left space-y-2 animate-fade-in">
+                <div class="flex items-center gap-2 text-emerald-800 font-bold text-base">
+                    <span class="text-xl">✅</span> <span>BERHASIL! Postur Tubuh Terdeteksi Akurat</span>
+                </div>
+                <h4 class="font-bold text-slate-800 text-xs">Analisis Pendidikan Jasmani & Kesehatan (PJKR):</h4>
+                <p id="edukasi-teks" class="text-xs text-slate-700 leading-relaxed"></p>
+                <button class="mt-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer" onclick="soalBerikutnya()">
+                    Hewan Selanjutnya ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- KOTAK KAMERA MENGAMBANG                    -->
+    <!-- ========================================== -->
+    <div id="draggable-cam" class="w-48 sm:w-56 bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border-2 border-white z-20">
+        <div id="cam-header" class="bg-slate-800 px-3 py-1.5 flex items-center justify-between text-[10px] text-slate-300 font-semibold cursor-move">
+            <span id="cam-title" class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                KAMERA SENSOR (GESER)
+            </span>
+        </div>
+        <div class="relative w-full aspect-[4/3] bg-slate-950">
+            <video id="input_video" class="hidden"></video>
+            <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1]"></canvas>
+            <div id="cam-overlay" class="absolute inset-0 flex flex-col items-center justify-center p-2 text-center bg-slate-900/95 z-10 transition-opacity duration-500">
+                <span class="text-[11px] text-slate-300 font-medium">Memuat Kamera AI...</span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- SCRIPT UTAMA & DATASET                     -->
+    <!-- ========================================== -->
+    <script>
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const virtualCursor = document.getElementById('virtual_cursor');
+        const camOverlay = document.getElementById('cam-overlay');
+
+        const pageHome = document.getElementById('page-home');
+        const pageMenu = document.getElementById('page-menu');
+        const pageFlora = document.getElementById('page-flora');
+        const pageFauna = document.getElementById('page-fauna');
+        const pageKuis = document.getElementById('page-kuis');
+
+        let currentActiveEngine = null; 
+        let cameraInstance = null;
+        let isPinching = false;
+        let sudahBerhasilJawab = false;
+        let indeksSoalAktif = 0;
+
+        // DATASET FLORA 
+        const dataFlora = [
+            {
+                wilayah: "Sumatra", emoji: "🌸", nama: "Padma Raksasa (Rafflesia arnoldii)",
+                apaitu: "Bunga terbesar di dunia! Ini bunga tunggal, bukan kumpulan bunga kecil.",
+                karakteristik: "Bunganya melebar, warnanya merah tua dengan bintil-bintil putih. Diameternya mencapai 1 meter dan berbau busuk seperti bangkai.",
+                perkembang: "Bersifat parasit; menempel di tanaman inang untuk mengambil makanan dan mengundang lalat untuk penyerbukan.",
+                keunikan: "Bunga resmi Indonesia yang hanya mekar selama beberapa hari lalu mati.",
+                embed3d: `<iframe title="rafflesia arnoldi" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share src="https://sketchfab.com/models/b0892bbfd18d4085a33ebde8591ebef4/embed?autostart=1&transparent=1"></iframe>`
+            },
+            {
+                wilayah: "Sumatra", emoji: "🗼", nama: "Bunga Bangkai (Amorphophallus titanum)",
+                apaitu: "Tumbuhan dengan perbungaan (kumpulan bunga) tertinggi di dunia! Berbeda dengan Rafflesia.",
+                karakteristik: "Tumbuh tegak lurus seperti menara jangkung hingga setinggi 3 meter lebih! Berwarna ungu tua di bagian dalam.",
+                perkembang: "Berkembang biak melalui umbi di bawah tanah setelah bertahun-tahun membentuk daun besar.",
+                keunikan: "Memegang rekor struktur bunga majemuk tertinggi di dunia dan berbau busuk.", 
+                embed3d: '<iframe title="Bunga Bangkai, Amorphophallus titanum Becc" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share src="https://sketchfab.com/models/1df08cb6ee354b279cfbf5c290fa75c7/embed?autostart=1&transparent=1"> </iframe>'
+            },
+            {
+                wilayah: "Jawa", emoji: "💮", nama: "Bunga Edelweis Jawa (Anaphalis javanica)",
+                apaitu: "Bunga kecil mungil yang tumbuh di pegunungan tinggi.",
+                karakteristik: "Tumbuh bergerombol, berwarna putih kekuningan dengan daun sempit dan kaku.",
+                perkembang: "Menggunakan biji-biji sangat kecil yang diterbangkan angin gunung.",
+                keunikan: "Dijuluki 'Bunga Abadi' karena tidak mudah layu, dilindungi karena hampir punah.", embed3d: ""
+            },
+            {
+                wilayah: "Jawa", emoji: "🌼", nama: "Cempaka Kuning (Magnolia champaca)",
+                apaitu: "Tumbuhan berbunga yang sangat terkenal karena wanginya yang khas.",
+                karakteristik: "Pohon besar, bunga berwarna kuning keemasan dengan kelopak panjang.",
+                perkembang: "Berkembang biak menggunakan biji alami.",
+                keunikan: "Aromanya yang sangat harum dan manis dapat tercium dari kejauhan.", embed3d: ""
+            },
+            {
+                wilayah: "Kalimantan", emoji: "🌺", nama: "Anggrek Hitam (Coelogyne pandurata)",
+                apaitu: "Salah satu jenis anggrek paling eksotis dan misterius dari hutan Kalimantan.",
+                karakteristik: "Memiliki kelopak hitam legam dengan bagian tengah hijau cerah dan putih.",
+                perkembang: "Melalui pemisahan rumpun atau penyebaran biji.",
+                keunikan: "Warna hitam legam pada bunga sangat langka di dunia tumbuhan.", 
+                embed3d: '<iframe title="シュンラン（花）/riverstream orchid" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share src="https://sketchfab.com/models/d0cdb4a104484f6c88affcd60f9497d3/embed?autostart=1&transparent=1"> </iframe>'
+            },
+            {
+                wilayah: "Kalimantan & Sumatra", emoji: "🪵", nama: "Pohon Ulin (Eusideroxylon zwageri)",
+                apaitu: "Pohon besar berkayu sangat kuat yang dijuluki Kayu Besi.",
+                karakteristik: "Batangnya sangat keras, berwarna gelap, bahkan sulit dipaku dan tahan ratusan tahun.",
+                perkembang: "Melalui biji pohon yang besar dan keras.",
+                keunikan: "Sangat awet, tahan air, dan biasa digunakan untuk jembatan serta perkapalan.", embed3d: ""
+            },
+            {
+                wilayah: "Sulawesi", emoji: "🪵", nama: "Kayu Hitam Sulawesi / Eboni (Diospyros celebica)",
+                apaitu: "Pohon berkayu keras dengan serat gelap eksotis.",
+                karakteristik: "Batang bagian dalam hitam pekat bertoreh kecokelatan; sangat padat dan berat.",
+                perkembang: "Menggunakan biji yang jatuh dari buahnya.",
+                keunikan: "Karena kepadatannya yang ekstrem, kayu ini bisa tenggelam di dalam air!", embed3d: ""
+            },
+            {
+                wilayah: "Sulawesi", emoji: "🌾", nama: "Anggrek Serat (Diplocaulobium utile)",
+                apaitu: "Tanaman anggrek khas Sulawesi dengan nilai kebudayaan tinggi.",
+                karakteristik: "Kelopak ramping kuning keemasan dengan serat-serat halus pada umbi semunya.",
+                perkembang: "Melalui biji mikroskopis atau pemisahan rumpun.",
+                keunikan: "Berguna ganda sebagai tanaman hias sekaligus bahan baku kerajinan anyaman.", 
+                embed3d: '<iframe title="Orchid" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share src="https://sketchfab.com/models/a2ed9a7895604b438f9241729a38ef2e/embed?autostart=1&transparent=1"> </iframe>'
+            },
+            {
+                wilayah: "Nusa Tenggara Timur (NTT)", emoji: "🌳", nama: "Pohon Cendana (Santalum album)",
+                apaitu: "Pohon rempah berkayu yang terkenal sangat harum alami.",
+                karakteristik: "Pohon ukuran sedang; kayu bagian dalamnya menyimpan minyak atsiri beraroma wangi.",
+                perkembang: "Berkembang biak melalui biji alami.",
+                keunikan: "Tanaman hemiparasit (akar mudanya menempel ke pohon lain untuk menyerap air).", embed3d: ""
+            },
+            {
+                wilayah: "Nusa Tenggara", emoji: "🌳", nama: "Ajang Kicau (Palaquium obovatum)",
+                apaitu: "Pohon peneduh kuat yang bertahan di iklim kering Nusa Tenggara.",
+                karakteristik: "Memiliki daun bundar telur terbalik yang agak tebal dan kayu kokoh.",
+                perkembang: "Melalui biji yang disebarkan oleh burung.",
+                keunikan: "Dedaunannya menjadi habitat dan tempat favorit burung kecil berkicau.", embed3d: ""
+            },
+            {
+                wilayah: "Maluku", emoji: "🌿", nama: "Kayu Cengkeh Asli (Syzygium aromaticum)",
+                apaitu: "Pohon rempah legendaris asal Kepulauan Rempah.",
+                karakteristik: "Kuncup bunga kemerahan saat siap dipetik dengan aroma wangi tajam.",
+                perkembang: "Menggunakan biji alami.",
+                keunikan: "Menjadi alasan bangsa-bangsa dunia berlayar ke Maluku pada masa lalu.", embed3d: ""
+            },
+            {
+                wilayah: "Maluku", emoji: "🌼", nama: "Pohon Angsana Maluku",
+                apaitu: "Pohon pelindung besar bermahkota bunga kuning cerah.",
+                karakteristik: "Tajuk pohon sangat rindang; saat berbunga tertutup warna kuning gading.",
+                perkembang: "Menggunakan biji bersayap yang diterbangkan angin.",
+                keunikan: "Bunga yang gugur membuat tanah seolah tertutup karpet kuning indah.", embed3d: ""
+            },
+            {
+                wilayah: "Papua", emoji: "🥕", nama: "Buah Merah (Pandanus conoideus)",
+                apaitu: "Buah tradisional berbentuk lonjong raksasa dari keluarga pandan.",
+                karakteristik: "Panjang buah mencapai 1 meter dengan bintil-bintil merah tua kehitaman.",
+                perkembang: "Dari biji buah atau tunas pohon pandan baru.",
+                keunikan: "Diolah menjadi minyak obat tradisional penangkal berbagai penyakit.", embed3d: ""
+            },
+            {
+                wilayah: "Papua", emoji: "🪴", nama: "Anggrek Hitam Papua (Corybas sp.)",
+                apaitu: "Anggrek tanah berukuran mungil (micro-orchid) yang sangat langka.",
+                karakteristik: "Sangat kecil, ungu gelap mendekati hitam pekat, tumbuh di atas lumut.",
+                perkembang: "Melalui spora atau biji mikroskopis di lantai hutan lembap.",
+                keunikan: "Tumbuh tersembunyi di balik lumut lantai hutan pegunungan dingin.", 
+                embed3d: '<iframe title="Black Orchid flower" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share src="https://sketchfab.com/models/7cc222b7bd4f45aab529cf895cd72c25/embed?autostart=1&transparent=1"> </iframe>'
+            }
+        ];
+        let indeksSlideFlora = 0;
+
+        // DATASET FAUNA BERSIH
+        const dataFauna = [
+            {
+                wilayah: "Sumatra", emoji: "🐯", nama: "Harimau Sumatra (Panthera tigris sumatrae)",
+                apaitu: "Kucing terbesar yang ada di Indonesia.",
+                karakteristik: "Tubuhnya gagah, berbulu oranye dengan garis-garis hitam (belang) yang unik—setiap harimau punya belang yang berbeda seperti sidik jari manusia! Belangnya lebih tipis dibandingkan harimau lain agar mudah bersembunyi di hutan lebat.",
+                perkembang: "Seperti kucing rumah, harimau betina melahirkan anak.",
+                keunikan: "Penjaga keseimbangan hutan. Harimau Sumatra pandai berenang dan suka air, lho!", embed3d: ""
+            },
+            {
+                wilayah: "Sumatra", emoji: "🦧", nama: "Orangutan Tapanuli (Pongo tapanuliensis)",
+                apaitu: "Spesies orangutan yang baru ditemukan para ahli, paling pemalu.",
+                karakteristik: "Bulunya lebih oranye kemerahan dan tampak lebih keriwil. Bentuk wajahnya agak berbeda dengan orangutan Kalimantan.",
+                perkembang: "Melahirkan anak. Induk orangutan sangat menyayangi dan merawat anaknya dalam waktu lama.",
+                keunikan: "Hewan ini adalah salah satu kera besar paling langka di dunia dan baru diumumkan sebagai spesies baru pada tahun 2017!", embed3d: ""
+            },
+            {
+                wilayah: "Jawa", emoji: "🦏", nama: "Badak Jawa (Rhinoceros sondaicus)",
+                apaitu: "Hewan berbadan besar yang tampak seperti memakai baju zirah.",
+                karakteristik: "Kulitnya tebal berdenging-denging abu-abu tua. Ia memiliki satu cula di hidungnya (paling pendek di antara badak lain).",
+                perkembang: "Melahirkan anak.",
+                keunikan: "Hewan yang sangat pemalu dan soliter (suka menyendiri). Salah satu mamalia paling langka di dunia!", embed3d: ""
+            },
+            {
+                wilayah: "Jawa", emoji: "🐒", nama: "Owa Jawa (Hylobates moloch)",
+                apaitu: "Sejenis primata (kera) yang hidup di pohon dan tidak punya ekor.",
+                karakteristik: "Bulunya abu-abu keperakan, wajahnya hitam. Lengannya sangat panjang, bahkan lebih panjang dari kakinya!",
+                perkembang: "Melahirkan anak.",
+                keunikan: "Juara berayun! Mereka bisa berpindah dari satu pohon ke pohon lain dengan sangat cepat dan lincah, seperti akrobat! Suara mereka juga unik, seperti nyanyian.", embed3d: ""
+            },
+            {
+                wilayah: "Kalimantan", emoji: "🦧", nama: "Orangutan Kalimantan (Pongo pygmaeus)",
+                apaitu: "Hewan yang sangat pintar, kera besar berbulu oranye kecokelatan.",
+                karakteristik: "Berbadan besar, bulunya oranye kemerahan, lengannya panjang dan kuat. Orangutan jantan punya piping (batalan pipi) yang besar.",
+                perkembang: "Melahirkan anak.",
+                keunikan: "Sangat pintar, bisa menggunakan alat untuk mendapatkan makanan dan jago membuat sarang di pohon!", embed3d: ""
+            },
+            {
+                wilayah: "Kalimantan", emoji: "🐒", nama: "Bekantan (Nasalis larvatus)",
+                apaitu: "Monyet unik dengan ciri paling mencolok pada hidungnya.",
+                karakteristik: "Berbulu cokelat kemerahan, perutnya buncit. Bekantan jantan memiliki hidung yang sangat besar dan panjang menggantung.",
+                perkembang: "Melahirkan anak.",
+                keunikan: "Jago berenang! Selain hidungnya yang lucu, Bekantan juga pandai menyelam dan punya selaput tipis di jari-jarinya. Dijuluki 'Monyet Belanda' karena hidung besarnya itu.", embed3d: ""
+            },
+            {
+                wilayah: "Sulawesi", emoji: "🐗", nama: "Babirusa (Babyrousa babyrussa)",
+                apaitu: "Hewan mirip babi hutan tetapi memiliki taring melengkung yang menembus moncongnya.",
+                karakteristik: "Tubuhnya hampir tidak berbulu, berwarna abu-abu. Babirusa jantan punya taring atas yang tumbuh menembus kulit moncong dan melengkung ke arah dahi.",
+                perkembang: "Melahirkan (mamalia). Induk Babirusa sangat menjaga anaknya dari bahaya.",
+                keunikan: "Taring melengkungnya membuat wajahnya terlihat seperti memiliki tanduk rusa, itu sebabnya dinamai 'Babi-Rusa'!", embed3d: ""
+            },
+            {
+                wilayah: "Sulawesi", emoji: "🐃", nama: "Anoa (Bubalus depressicornis)",
+                apaitu: "Kerbau terkecil di dunia!",
+                karakteristik: "Bentuknya mirip kerbau rumah tetapi ukurannya kerdil/kecil. Memiliki tanduk lurus yang mengarah ke belakang.",
+                perkembang: "Melahirkan anak secara tunggal.",
+                keunikan: "Walaupun ukurannya kecil seperti kambing besar, Anoa tergolong hewan pemalu yang sangat lincah saat bergerak di dalam hutan lebat.", embed3d: ""
+            },
+            {
+                wilayah: "Sulawesi", emoji: "🦤", nama: "Burung Maleo (Macrocephalon maleo)",
+                apaitu: "Burung unik yang tidak mengerami telurnya sendiri!",
+                karakteristik: "Bulu tubuhnya dominan hitam dengan dada merah muda pucat. Di atas kepalanya terdapat benjolan atau tonjolan keras berwarna hitam.",
+                perkembang: "Bertelur di dalam tanah atau pasir pantai yang hangat.",
+                keunikan: "Ukuran telurnya sangat raksasa—hampir 5 kali lebih besar dari telur ayam! Anak Maleo yang baru menetas dari dalam pasir bisa langsung terbang tanpa diajari induknya!", embed3d: ""
+            },
+            {
+                wilayah: "Nusa Tenggara", emoji: "🦎", nama: "Komodo (Varanus komodoensis)",
+                apaitu: "Kadal raksasa terbesar di dunia!",
+                karakteristik: "Tubuhnya panjang dan berotot, kulitnya bersisik tebal. Memiliki lidah bercabang berwarna kuning dan air liur berbisa.",
+                perkembang: "Bertelur di dalam lubang tanah.",
+                keunikan: "Satu-satunya kadal purba berukuran raksasa yang masih hidup sampai hari ini di bumi!", embed3d: ""
+            },
+            {
+                wilayah: "Nusa Tenggara", emoji: "🦌", nama: "Rusa Timor (Cervus timorensis)",
+                apaitu: "Jenis rusa khas yang sangat tangguh di daerah padang rumput.",
+                karakteristik: "Bulunya kemerahan hingga abu-abu kecokelatan. Rusa jantan memiliki tanduk bercabang tiga yang sangat gagah.",
+                perkembang: "Melahirkan (mamalia).",
+                keunikan: "Sangat adaptif dan pandai berenang di laut untuk berpindah antar-pulau kecil!", embed3d: ""
+            },
+            {
+                wilayah: "Maluku", emoji: "🕊️", nama: "Burung Bidadari Halmahera (Semioptera wallacii)",
+                apaitu: "Salah satu jenis burung cenderawasih paling unik di Maluku Utara.",
+                karakteristik: "Burung jantan memiliki bulu dada hijau zamrud yang mengkilap dan dua pasang bulu putih panjang menonjol keluar dari sayapnya menyerupai pita.",
+                perkembang: "Bertelur di dalam sarang di atas pohon.",
+                keunikan: "Pita putih panjang di dadanya bisa digerak-gerakkan saat ia menari di dahan pohon untuk memikat burung betina!", embed3d: ""
+            },
+            {
+                wilayah: "Maluku", emoji: "🦜", nama: "Kakatua Seram (Cacatua moluccensis)",
+                apaitu: "Burung paruh bengkok yang sangat cerdas dan cantik.",
+                karakteristik: "Bulunya putih berselimut nuansa merah muda pucat. Memiliki jambul besar berwarna oranye-merah muda yang bisa ditegakkan jika ia kaget atau senang.",
+                perkembang: "Bertelur di dalam lubang batang pohon besar.",
+                keunikan: "Suaranya sangat nyaring dan merupakan salah satu burung yang sangat pintar meniru suara dan gerakan!", embed3d: ""
+            },
+            {
+                wilayah: "Papua", emoji: "🦚", nama: "Cenderawasih Kuning-besar (Paradisaea apoda)",
+                apaitu: "Burung eksotis paling terkenal dari Papua yang dijuluki Bird of Paradise atau 'Burung dari Surga'.",
+                karakteristik: "Burung jantan memiliki bulu hiasan berwarna kuning keemasan yang sangat tebal di bagian pinggul dan ekornya, serta wajah berwarna hijau zamrud mengkilap.",
+                perkembang: "Bertelur di dalam sarang yang terbuat dari ranting dan daun di atas dahan pohon tinggi.",
+                keunikan: "Dulu, orang-orang Eropa mengira burung ini tidak punya kaki dan hanya terbang di langit surga tanpa pernah menyentuh tanah! Itu sebabnya nama ilmiahnya apoda artinya 'tidak berkaki'.", embed3d: ""
+            },
+            {
+                wilayah: "Papua", emoji: "🦘", nama: "Kanguru Pohon Mantel Emas (Dendrolagus pulcherrimus)",
+                apaitu: "Spesies kanguru yang tidak melompat di padang rumput, melainkan hidup dan memanjat di atas pohon!",
+                karakteristik: "Bulunya cokelat kemerahan tebal dengan dada dan leher berwarna kuning keemasan seperti memakai mantel. Memiliki ekor panjang untuk menjaga keseimbangan.",
+                perkembang: "Melahirkan anak yang sangat kecil (mamalia berkantung), lalu anak itu akan merayap dan tinggal di dalam kantung perut induknya sampai tumbuh besar.",
+                keunikan: "Jika kanguru Australia melompat di darat, kanguru Papua ini adalah ahli panjat pohon yang sangat lincah di ketinggian!", embed3d: ""
+            }
+        ];
+        let indeksSlideFauna = 0;
+
+        // DATA KUIS POSE
+        const daftarHewanPose = [
+            {
+                emoji: "🦩",
+                nama: "Burung Flamingo",
+                instruksi: "Berdirilah dan angkat kedua tangan ke atas sejajar bahu untuk menirukan sayap flamingo!",
+                edukasi: "Meniru flamingo melatih keseimbangan statis, memperkuat otot proprioseptor di sekitar pergelangan kaki, dan melatih fokus konsentrasi vestibular otak.",
+                syaratPose: (lm) => lm[15].y < lm[11].y && lm[16].y < lm[12].y 
+            },
+            {
+                emoji: "🐅",
+                nama: "Harimau Mengintai",
+                instruksi: "Bungkukkan sedikit badan Anda atau posisikan tangan di area tengah badan ala harimau mengintai!",
+                edukasi: "Posisi merendah memperkuat stabilitas otot inti (core stability), otot bahu, dan melatih fleksibilitas sendi panggul.",
+                syaratPose: (lm) => lm[15].y >= lm[11].y && lm[15].y <= 0.7
+            }
+        ];
+
+        // INISIALISASI MEDIAPIPE AI
+        const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
+        hands.onResults(onResultsHands);
+
+        const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
+        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        pose.onResults(onResultsPose);
+
+        cameraInstance = new Camera(videoElement, {
+            onFrame: async () => {
+                if (currentActiveEngine === 'hands') {
+                    await hands.send({ image: videoElement });
+                } else if (currentActiveEngine === 'pose') {
+                    await pose.send({ image: videoElement });
+                }
+            },
+            width: 640,
+            height: 480
+        });
+
+        function switchEngine(engineType) {
+            currentActiveEngine = engineType;
+            document.getElementById('cam-title').innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> KAMERA (${engineType.toUpperCase()})`;
+        }
+
+        // NAVIGASI HALAMAN UTAMA
+        function bukaMenuUtama() {
+            pageHome.classList.add('hidden');
+            pageMenu.classList.remove('hidden');
+            pageMenu.classList.add('flex');
+            switchEngine('hands');
+        }
+
+        function kembaliKeHome() {
+            pageMenu.classList.remove('flex');
+            pageMenu.classList.add('hidden');
+            pageHome.classList.remove('hidden');
+            switchEngine('hands');
+        }
+
+        // ===================================
+        // LOGIKA SLIDE FLORA
+        // ===================================
+        function bukaFlora() {
+            pageMenu.classList.remove('flex');
+            pageMenu.classList.add('hidden');
+            pageFlora.classList.remove('hidden');
+            pageFlora.classList.add('flex');
+            indeksSlideFlora = 0;
+            muatSlideFlora();
+        }
+
+        function tutupFlora() {
+            pageFlora.classList.remove('flex');
+            pageFlora.classList.add('hidden');
+            pageMenu.classList.remove('hidden');
+            pageMenu.classList.add('flex');
+        }
+
+        function muatSlideFlora() {
+            const f = dataFlora[indeksSlideFlora];
+            document.getElementById('flora-wilayah').innerText = `Wilayah: ${f.wilayah}`;
+            document.getElementById('flora-counter').innerText = `Slide ${indeksSlideFlora + 1} dari ${dataFlora.length}`;
+            document.getElementById('flora-tag').innerText = `Endemik ${f.wilayah}`;
+            document.getElementById('flora-nama').innerText = f.nama;
+            document.getElementById('flora-apaitu').innerText = f.apaitu;
+            document.getElementById('flora-karakteristik').innerText = f.karakteristik;
+            document.getElementById('flora-perkembang').innerText = f.perkembang;
+            document.getElementById('flora-keunikan').innerText = f.keunikan;
+
+            const container = document.getElementById('container-3d-flora');
+            if (f.embed3d && f.embed3d.trim() !== "") {
+                container.innerHTML = `<div class="embed-container absolute inset-0 w-full h-full p-2">${f.embed3d}</div>`;
+            } else {
+                container.innerHTML = `<div class="text-8xl mb-2 animate-pulse">${f.emoji}</div><p class="text-[10px] text-emerald-400 font-semibold absolute bottom-2 z-10">⚠️ Visual 3D sedang disiapkan oleh mitra.</p>`;
+            }
+        }
+
+        function slideBerikutnyaFlora() {
+            if (indeksSlideFlora < dataFlora.length - 1) {
+                indeksSlideFlora++;
+                muatSlideFlora();
+            } else {
+                alert('Anda telah berada di slide flora terakhir.');
+            }
+        }
+
+        function slideSebelumnyaFlora() {
+            if (indeksSlideFlora > 0) {
+                indeksSlideFlora--;
+                muatSlideFlora();
+            }
+        }
+
+        // ===================================
+        // LOGIKA SLIDE FAUNA
+        // ===================================
+        function bukaFauna() {
+            pageMenu.classList.remove('flex');
+            pageMenu.classList.add('hidden');
+            pageFauna.classList.remove('hidden');
+            pageFauna.classList.add('flex');
+            indeksSlideFauna = 0;
+            muatSlideFauna();
+        }
+
+        function tutupFauna() {
+            pageFauna.classList.remove('flex');
+            pageFauna.classList.add('hidden');
+            pageMenu.classList.remove('hidden');
+            pageMenu.classList.add('flex');
+        }
+
+        function muatSlideFauna() {
+            const f = dataFauna[indeksSlideFauna];
+            document.getElementById('fauna-wilayah').innerText = `Wilayah: ${f.wilayah}`;
+            document.getElementById('fauna-counter').innerText = `Slide ${indeksSlideFauna + 1} dari ${dataFauna.length}`;
+            document.getElementById('fauna-tag').innerText = `Endemik ${f.wilayah}`;
+            document.getElementById('fauna-nama').innerText = f.nama;
+            document.getElementById('fauna-apaitu').innerText = f.apaitu;
+            document.getElementById('fauna-karakteristik').innerText = f.karakteristik;
+            document.getElementById('fauna-perkembang').innerText = f.perkembang;
+            document.getElementById('fauna-keunikan').innerText = f.keunikan;
+
+            const container = document.getElementById('container-3d-fauna');
+            if (f.embed3d && f.embed3d.trim() !== "") {
+                container.innerHTML = `<div class="embed-container absolute inset-0 w-full h-full p-2">${f.embed3d}</div>`;
+            } else {
+                container.innerHTML = `<div class="text-8xl mb-2 animate-pulse">${f.emoji}</div><p class="text-[10px] text-amber-400 font-semibold absolute bottom-2 z-10">⚠️ Visual 3D Fauna sedang disiapkan oleh mitra.</p>`;
+            }
+        }
+
+        function slideBerikutnyaFauna() {
+            if (indeksSlideFauna < dataFauna.length - 1) {
+                indeksSlideFauna++;
+                muatSlideFauna();
+            } else {
+                alert('Anda telah berada di slide fauna terakhir.');
+            }
+        }
+
+        function slideSebelumnyaFauna() {
+            if (indeksSlideFauna > 0) {
+                indeksSlideFauna--;
+                muatSlideFauna();
+            }
+        }
+
+
+        // ===================================
+        // NAVIGASI HALAMAN KUIS
+        // ===================================
+        function bukaKuis() {
+            pageMenu.classList.remove('flex');
+            pageMenu.classList.add('hidden');
+            pageKuis.classList.remove('hidden');
+            pageKuis.classList.add('flex');
+            virtualCursor.classList.add('hidden');
+            indeksSoalAktif = 0;
+            muatSoalPose();
+            switchEngine('pose');
+        }
+
+        function tutupKuis() {
+            pageKuis.classList.remove('flex');
+            pageKuis.classList.add('hidden');
+            pageMenu.classList.remove('hidden');
+            pageMenu.classList.add('flex');
+            switchEngine('hands');
+        }
+
+        function muatSoalPose() {
+            sudahBerhasilJawab = false;
+            const h = daftarHewanPose[indeksSoalAktif];
+            document.getElementById('hewan-emoji').innerText = h.emoji;
+            document.getElementById('hewan-nama').innerText = h.nama;
+            document.getElementById('hewan-instruksi').innerText = h.instruksi;
+            document.getElementById('edukasi-teks').innerText = h.edukasi;
+            document.getElementById('edukasi-box').classList.add('hidden');
+            document.getElementById('sensor-status-badge').classList.remove('hidden');
+        }
+
+        function berhasilPeragaOtomatis() {
+            if (sudahBerhasilJawab) return;
+            sudahBerhasilJawab = true;
+            document.getElementById('sensor-status-badge').classList.add('hidden');
+            document.getElementById('edukasi-box').classList.remove('hidden');
+        }
+
+        function soalBerikutnya() {
+            indeksSoalAktif++;
+            if (indeksSoalAktif < daftarHewanPose.length) {
+                muatSoalPose();
+            } else {
+                alert('Luar biasa! Seluruh tantangan kuis gerak PJKR selesai.');
+                tutupKuis();
+            }
+        }
+
+        // CALLBACK AI HANDS (Untuk Kursor & Klik)
+        function onResultsHands(results) {
+            hilangkanOverlayKamera();
+            aturUkuranKanvas();
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && currentActiveEngine === 'hands') {
+                virtualCursor.classList.remove('hidden');
+                const lm = results.multiHandLandmarks[0];
+                const screenX = (1 - lm[8].x) * window.innerWidth;
+                const screenY = lm[8].y * window.innerHeight;
+
+                virtualCursor.style.left = `${screenX}px`;
+                virtualCursor.style.top = `${screenY}px`;
+
+                const pinchDist = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
+                if (pinchDist < 0.05) {
+                    virtualCursor.style.backgroundColor = '#ef4444';
+                    virtualCursor.innerText = 'Klik';
+                    if (!isPinching) {
+                        isPinching = true;
+                        const target = document.elementFromPoint(screenX, screenY)?.closest('.interactive-btn, button, div[onclick]');
+                        if (target) target.click();
+                    }
+                } else {
+                    virtualCursor.style.backgroundColor = 'rgba(16, 185, 129, 0.85)';
+                    virtualCursor.innerText = '';
+                    isPinching = false;
+                }
+
+                document.querySelectorAll('.interactive-btn').forEach(el => el.classList.remove('gesture-hover'));
+                const hovered = document.elementFromPoint(screenX, screenY)?.closest('.interactive-btn');
+                if (hovered) hovered.classList.add('gesture-hover');
+
+                drawConnectors(canvasCtx, lm, HAND_CONNECTIONS, { color: '#10b981', lineWidth: 2 });
+                drawLandmarks(canvasCtx, lm, { color: '#f59e0b', lineWidth: 1, radius: 2 });
+            } else {
+                virtualCursor.classList.add('hidden');
+            }
+            canvasCtx.restore();
+        }
+
+        // CALLBACK AI POSE (Untuk Kuis Hewan)
+        function onResultsPose(results) {
+            hilangkanOverlayKamera();
+            aturUkuranKanvas();
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.poseLandmarks && currentActiveEngine === 'pose') {
+                const lm = results.poseLandmarks;
+                if (!sudahBerhasilJawab) {
+                    const soal = daftarHewanPose[indeksSoalAktif];
+                    if (soal.syaratPose(lm)) {
+                        berhasilPeragaOtomatis();
+                    }
+                }
+                drawConnectors(canvasCtx, lm, POSE_CONNECTIONS, { color: '#10b981', lineWidth: 2 });
+                drawLandmarks(canvasCtx, lm, { color: '#f59e0b', lineWidth: 1, radius: 3 });
+            }
+            canvasCtx.restore();
+        }
+
+        function hilangkanOverlayKamera() {
+            if (!camOverlay.classList.contains('opacity-0')) {
+                camOverlay.classList.add('opacity-0');
+                setTimeout(() => camOverlay.classList.add('hidden'), 500);
+            }
+        }
+
+        function aturUkuranKanvas() {
+            if (canvasElement.width !== canvasElement.clientWidth || canvasElement.height !== canvasElement.clientHeight) {
+                canvasElement.width = canvasElement.clientWidth;
+                canvasElement.height = canvasElement.clientHeight;
+            }
+        }
+
+        // LOGIKA DRAGGABLE KAMERA
+        const dragItem = document.getElementById("draggable-cam");
+        let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+        dragItem.addEventListener("touchstart", dragStart, { passive: true });
+        document.addEventListener("touchend", dragEnd, { passive: true });
+        document.addEventListener("touchmove", drag, { passive: true });
+        dragItem.addEventListener("mousedown", dragStart);
+        document.addEventListener("mouseup", dragEnd);
+        document.addEventListener("mousemove", drag);
+
+        function dragStart(e) {
+            initialX = (e.type === "touchstart") ? e.touches[0].clientX - xOffset : e.clientX - xOffset;
+            initialY = (e.type === "touchstart") ? e.touches[0].clientY - yOffset : e.clientY - yOffset;
+            if (e.target === dragItem || dragItem.contains(e.target)) active = true;
+        }
+        function dragEnd() { initialX = currentX; initialY = currentY; active = false; }
+        function drag(e) {
+            if (active) {
+                e.preventDefault();
+                currentX = (e.type === "touchmove") ? e.touches[0].clientX - initialX : e.clientX - initialX;
+                currentY = (e.type === "touchmove") ? e.touches[0].clientY - initialY : e.clientY - initialY;
+                xOffset = currentX; yOffset = currentY;
+                dragItem.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+            }
+        }
+
+        // ========================================================
+        // KAMERA MENYALA OTOMATIS SAAT WEB DIBUKA
+        // ========================================================
+        switchEngine('hands');
+        cameraInstance.start();
+
+    </script>
+</body>
+</html>
